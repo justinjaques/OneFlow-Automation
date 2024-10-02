@@ -1,3 +1,8 @@
+# OneFlow Automation Primary Panel Blueprint - for any questions, contact jmjaques01@gmail.com or (914-467-9943)
+# Re-Distribution or cloning of this software is strictly prohibited. Any attempts to do so will result in severe legal punishment.
+# Copyright, OneFlow Automation, 2024 <- We need to get this copyrighted
+# Justin Jaques
+
 import smtplib
 import pandas as pd
 import tkinter as tk
@@ -5,19 +10,51 @@ from tkinter import messagebox, filedialog
 from tkinter import ttk
 import datetime as dt
 import os
+import requests
+from tkinter import PhotoImage
 
 
-# Email Automation GUI
-class Email:
-   # Authentication details
-   auth = ('OneFlowAutomation@gmail.com', 'npiv sqhm msnh acgw')
-
+class Home:
    def __init__(self):
-      # Initialize email list and CSV path
+      self.current_csv = ''
+      self.auth = ('OneFlowAutomation@gmail.com', 'npiv sqhm msnh acgw') # Replace with company automated G-Mail account.
       self.email_list = []
-      self.current_csv = ""
+      self.text_list = []
+      self.current_frame = None
+   
+   def load_texts(self):
+      texts_df = pd.read_csv(self.current_csv)
+      texts_df['Phone'] = texts_df['Phone'].fillna("").astype(str).str.replace(".0", "", regex=False)
+      for number in texts_df['Phone']:
+         self.text_list.append(number)
+      print(self.text_list)
 
-   # Function to send mass email
+   def load_emails(self):
+      texts_df = pd.read_csv(self.current_csv)
+      for email in texts_df['Email']:
+         self.email_list.append(email)
+      print(self.email_list)
+
+      
+   # Upload CSV
+   def upload_csv(self):
+      self.current_csv = filedialog.askopenfilename(filetypes=[("CSV Files", "*.csv")])
+      if self.current_csv:
+         frame = pd.read_csv(self.current_csv)
+         self.list = frame.dropna().values.flatten().tolist()
+         messagebox.showinfo("Success", "CSV file uploaded successfully!")
+         self.load_texts()
+         self.load_emails()
+
+   # Display CSV content
+   def display_csv(self, csv_view):
+      if self.current_csv:
+         df = pd.read_csv(self.current_csv).dropna()
+         csv_view.delete(1.0, tk.END)
+         csv_view.insert(tk.END, df.to_string(index=False))
+      else:
+         messagebox.showwarning("Warning", "No CSV uploaded!")
+         
    def send_mass_email(self, subject, body):
       server = smtplib.SMTP("smtp.gmail.com", 587)
       server.starttls()
@@ -32,25 +69,23 @@ class Email:
 
       server.quit()
       messagebox.showinfo("Success", "Emails have been sent successfully!")
-
-   # Function to upload CSV
-   def upload_csv(self):
-      self.current_csv = filedialog.askopenfilename(filetypes=[("CSV Files", "*.csv")])
-      if self.current_csv:
-         email_frame = pd.read_csv(self.current_csv)
-         self.email_list = email_frame.dropna().values.flatten().tolist()
-         messagebox.showinfo("Success", "CSV file uploaded successfully!")
-
-   # Function to display CSV content
-   def display_csv(self, csv_view):
-      if self.current_csv:
-         email_frame = pd.read_csv(self.current_csv).dropna()
-         csv_view.delete(1.0, tk.END)
-         csv_view.insert(tk.END, email_frame.to_string(index=False))
+      
+   def send_text(self, api_key_entry, text_entry):
+      text = text_entry.get("1.0", tk.END).strip()
+      
+      if text:
+         api_key = api_key_entry.get("1.0", tk.END).strip()
+         for number in self.text_list:
+          requests.post('https://textbelt.com/text', {
+         'phone': number,  
+         'message': text,  
+         'key': api_key
+      })
+                  
       else:
-         messagebox.showwarning("Warning", "No CSV uploaded!")
+         messagebox.showwarning("Warning", "Please upload a CSV, and enter a text.")
+      
 
-   # Function to send email (from email screen)
    def send_email(self, subject_entry, body_entry):
       subject = subject_entry.get()
       body = body_entry.get("1.0", tk.END).strip()
@@ -59,15 +94,19 @@ class Email:
          self.send_mass_email(subject, body)
       else:
          messagebox.showwarning("Warning", "Please upload a CSV, and enter subject and body.")
-
-   # Navigation functions
+         
+   
    @staticmethod
    def show_frame(frame):
       frame.tkraise()
+      
+   def switch_frame(self, frame):
+      self.current_frame = frame
+      self.show_frame(frame)
 
-   def tkinter_gui(self):
+   def gui(self):
       root = tk.Tk()
-      root.title("OneFlow E-Mail Automation")
+      root.title("OneFlow Automation Panel")
       root.geometry("800x500")
       root.resizable(False, False)
 
@@ -84,128 +123,129 @@ class Email:
 
       # Create the frames for each section
       main_menu = ttk.Frame(root, padding=100, style="TFrame")
-      csv_upload = ttk.Frame(root, padding=20, style="TFrame")
-      email_screen = ttk.Frame(root, padding=20, style="TFrame")
-      csv_view_screen = ttk.Frame(root, padding=20, style="TFrame")
+      csv_upload = ttk.Frame(root, padding=200, style="TFrame")
+      email_screen = ttk.Frame(root, padding=200, style="TFrame")
+      csv_view_screen = ttk.Frame(root, width=200, style="TFrame")
+      text_screen = ttk.Frame(root, width=500, style='TFrame')
 
-      for frame in (main_menu, csv_upload, email_screen, csv_view_screen):
+
+      for frame in (main_menu, csv_upload, email_screen, csv_view_screen, text_screen):
          frame.grid(row=0, column=0, sticky="nsew")
 
-      # Main menu layout (centered)
-      main_title = ttk.Label(main_menu, text="OneFlow Automation - E-Mail Automater", font=("Arial", 24))
-      main_title.pack(pady=0)
+      
+      menu_bg_image = tk.PhotoImage(file="menu-background-image.png")
+      background_label = tk.Label(main_menu, image=menu_bg_image)
+      background_label.place(x = -100, y=-100) 
+      
+      email_btn = ttk.Button(main_menu, text="Send Mass E-Mail", command=lambda: self.switch_frame(email_screen), width=30)
+      email_btn.place(x=150, y=100)
+      email_btn.config(cursor="hand2")
+      
+      text_btn = ttk.Button(main_menu, text="Send Mass Text", command=lambda: self.switch_frame(text_screen), width=30)
+      text_btn.place(x=150, y=150)
+      text_btn.config(cursor="hand2")
 
-      upload_btn = ttk.Button(main_menu, text="Upload CSV", command=lambda: Email.show_frame(csv_upload), width=30)
-      upload_btn.pack(pady=10)
+      view_csv_btn = ttk.Button(main_menu, text="View Current CSV", command=lambda: self.switch_frame(csv_view_screen), width=30)
+      view_csv_btn.place(x=150, y=200)
+      view_csv_btn.config(cursor="hand2")
 
-      view_csv_btn = ttk.Button(main_menu, text="View Current CSV", command=lambda: Email.show_frame(csv_view_screen), width=30)
-      view_csv_btn.pack(pady=10)
-
-      email_btn = ttk.Button(main_menu, text="Send Mass E-Mail", command=lambda: Email.show_frame(email_screen), width=30)
-      email_btn.pack(pady=10)
+      upload_btn = ttk.Button(main_menu, text="Upload CSV", command=lambda: self.switch_frame(csv_upload), width=30)
+      upload_btn.place(x=150, y=250)
+      upload_btn.config(cursor="hand2")
 
       exit_btn = ttk.Button(main_menu, text="Exit", command=root.quit, width=30)
-      exit_btn.pack(pady=10)
+      exit_btn.place(x=150, y=300)
+      exit_btn.config(cursor="hand2")
 
       # CSV Upload Screen (centered)
       csv_upload_title = ttk.Label(csv_upload, text="Upload CSV", font=("Arial", 24))
-      csv_upload_title.pack(pady=20)
+      csv_upload_title.place(x=120, y=-90)
 
       upload_csv_btn = ttk.Button(csv_upload, text="Select CSV File", command=self.upload_csv, width=30)
       upload_csv_btn.pack(pady=10)
 
-      back_btn = ttk.Button(csv_upload, text="Back to Main Menu", command=lambda: Email.show_frame(main_menu), width=30)
+      back_btn = ttk.Button(csv_upload, text="Back to Main Menu", command=lambda: self.show_frame(main_menu), width=30)
       back_btn.pack(pady=10)
 
       # Email Sending Screen (centered)
       email_screen_title = ttk.Label(email_screen, text="Send Mass E-Mail", font=("Arial", 24))
-      email_screen_title.pack(pady=20)
+      email_screen_title.place(x=90, y=-190)
 
       subject_label = ttk.Label(email_screen, text="E-Mail Subject:")
-      subject_label.pack()
+      subject_label.place(x=150, y=-130)
+      
       subject_entry = ttk.Entry(email_screen, width=50)
-      subject_entry.pack(pady=5)
+      subject_entry.place(x=50, y=-100)
 
       body_label = ttk.Label(email_screen, text="E-Mail Body:")
-      body_label.pack()
+      body_label.place(x=150, y=-30)
+      
       body_entry = tk.Text(email_screen, height=10, width=50)
       body_entry.pack(pady=5)
 
       send_email_btn = ttk.Button(email_screen, text="Send E-Mail", command=lambda: self.send_email(subject_entry, body_entry), width=30)
       send_email_btn.pack(pady=10)
 
-      back_to_main_btn = ttk.Button(email_screen, text="Back to Main Menu", command=lambda: Email.show_frame(main_menu), width=30)
+      back_to_main_btn = ttk.Button(email_screen, text="Back to Main Menu", command=lambda: self.show_frame(main_menu), width=30)
       back_to_main_btn.pack(pady=10)
+      
+      # Text sending screen
+
+      api_key_label = ttk.Label(text_screen, text="API Key:")
+      api_key_label.pack(pady=0)
+      api_key_entry = tk.Text(text_screen, height=1, width=65)
+      api_key_entry.pack(pady=0)
+      api_key_entry.insert(tk.END, key)
+      
+      
+      text_screen_label = ttk.Label(text_screen, text="Text:")
+      text_screen_label.pack(pady=0)
+      text_entry = tk.Text(text_screen, height=20, width=50)
+      text_entry.pack(pady=0)
+      
+      
+      text_send_btn = ttk.Button(text_screen, text="Send", command=lambda: self.send_text(api_key_entry, text_entry), width=20)
+      text_send_btn.pack(pady=7)
+      
+      back_to_main_menu_btn = ttk.Button(text_screen, text="Back to Main Menu", command=lambda: self.show_frame(main_menu), width=30)
+      back_to_main_menu_btn.pack(pady=0)
+      
 
       # CSV Viewing Screen (centered)
       csv_view_title = ttk.Label(csv_view_screen, text="Current CSV", font=("Arial", 24))
       csv_view_title.pack(pady=20)
+      
 
       csv_view = tk.Text(csv_view_screen, height=10, width=60)
       csv_view.pack(pady=10)
-
+      
+      
+      
       refresh_btn = ttk.Button(csv_view_screen, text="Refresh CSV", command=lambda: self.display_csv(csv_view), width=30)
       refresh_btn.pack(pady=10)
 
-      back_to_menu_btn = ttk.Button(csv_view_screen, text="Back to Main Menu", command=lambda: Email.show_frame(main_menu), width=30)
+      back_to_menu_btn = ttk.Button(csv_view_screen, text="Back to Main Menu", command=lambda: self.show_frame(main_menu), width=30)
       back_to_menu_btn.pack(pady=10)
 
-      # Show the main menu first
-      Email.show_frame(main_menu)
+
 
       # Start the Tkinter loop
+      self.switch_frame(main_menu) # Make main menu the starting frame
+
+
+      root.config(background='white')
+      icon = PhotoImage(file="OneFlow_Window_Icon.png")  
+      root.iconphoto(False, icon)
       root.mainloop()
 
 
-class Text:
-   def __init__(self):
-      self.text_list = []
-      self.current_csv = ""
 
-   def tkinter_gui():
-      root = tk.Tk()
-      root.title("OneFlow Text Automation")
-      root.geometry("800 x 500")
-      root.resizeable(False, False)
-
-      # Styling
-      style = ttk.Style()
-      style.theme_use('clam')
-      style.configure("TFrame", background="#f0f0f0")
-      style.configure("TButton", font=("Helvetica", 12), background="#4CAF50", foreground="white")
-      style.configure("TLabel", background="#f0f0f0", font=("Helvetica", 14))
-      style.configure("TEntry", padding=5, font=("Helvetica", 12))
-      style.configure("TText", font=("Helvetica", 12))
-
-      # Frames for each menu
-      main_menu = ttk.Frame(root, padding=100, style="TFrame")
-      csv_upload = ttk.Frame(root, padding=100, style="TFrame")
-      send_text_screen = ttk.Frame(root, padding=100, style="TFrame")
-
-      for frame in (main_menu, csv_upload, send_text_screen):
-         frame.grid(row=0, column=0, sticky="nsew")
-
-      main_title = ttk.Label(main_menu, text="OneFlow Text Automation", font="Arial")
-
-
-   text_csv = pd.read_csv("AutoText.csv")
-   user_frame = pd.DataFrame(text_csv)
-   user_frame.columns = user_frame.columns.str.strip()
-   people = {}
-
-   for index, row in user_frame.iterrows():
-      name = row['Name']
-      phone_number = row['Phone']
-      people[name] = phone_number
-
-
-
-
-key = "553df227ee6b5643502d4fd312f13bc7cd833472vxmQm2Xy3anpwHqi07x33Pric"
+key = "553df227ee6b5643502d4fd312f13bc7cd833472vxmQm2Xy3anpwHqi07x33Pric" # Companies will have to use their own API Key.
 
 
 
 
 if __name__ == "__main__":
-   email_app = Email()
-   email_app.tkinter_gui()
+   app = Home()
+   app.gui()
+
