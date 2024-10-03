@@ -20,7 +20,9 @@ class Home:
       self.auth = ('OneFlowAutomation@gmail.com', 'npiv sqhm msnh acgw') # Replace with company automated G-Mail account.
       self.email_list = []
       self.text_list = []
+      self.name_list = []
       self.current_frame = None
+      self.final_dataframe = None
    
    def load_texts(self):
       texts_df = pd.read_csv(self.current_csv)
@@ -30,10 +32,17 @@ class Home:
       print(self.text_list)
 
    def load_emails(self):
-      texts_df = pd.read_csv(self.current_csv)
-      for email in texts_df['Email']:
+      emails_df = pd.read_csv(self.current_csv)
+      for email in emails_df['Email']:
          self.email_list.append(email)
       print(self.email_list)
+   
+   def load_names(self):
+      names_df = pd.read_csv(self.current_csv)
+      for name in names_df['Name']:
+         self.name_list.append(name)
+      print(self.name_list)
+      
 
       
    # Upload CSV
@@ -45,11 +54,23 @@ class Home:
          messagebox.showinfo("Success", "CSV file uploaded successfully!")
          self.load_texts()
          self.load_emails()
+         self.load_names()
+         
+         person_dict = {
+            'Name': self.name_list,
+            'Phone': self.text_list,
+            'Email': self.email_list
+         }
+         
+         final_frame = pd.DataFrame(person_dict)
+         self.final_dataframe = final_frame
+         
+         
 
    # Display CSV content
    def display_csv(self, csv_view):
       if self.current_csv:
-         df = pd.read_csv(self.current_csv).dropna()
+         df = pd.read_csv(self.final_dataframe).dropna()
          csv_view.delete(1.0, tk.END)
          csv_view.insert(tk.END, df.to_string(index=False))
       else:
@@ -60,8 +81,8 @@ class Home:
       server.starttls()
       server.login(self.auth[0], self.auth[1])
 
-      for email in self.email_list:
-         message = f"From: {self.auth[0]}\nTo: {email}\nSubject: {subject}\n\n{body}"
+      for email in self.final_dataframe['Email']:
+         message = f"From: {self.auth[0]}\nTo: {email}\nSubject: {subject}\n\n + {body}"
          try:
                server.sendmail(self.auth[0], email, message)
          except Exception as e:
@@ -74,11 +95,14 @@ class Home:
       text = text_entry.get("1.0", tk.END).strip()
       
       if text:
+         
          api_key = api_key_entry.get("1.0", tk.END).strip()
-         for number in self.text_list:
-          requests.post('https://textbelt.com/text', {
+         for number in self.final_dataframe['Phone']:
+            message = f"Hello, {self.final_dataframe['Name']}\n" + text
+            
+            requests.post('https://textbelt.com/text', {
          'phone': number,  
-         'message': text,  
+         'message': message,  
          'key': api_key
       })
                   
