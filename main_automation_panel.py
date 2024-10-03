@@ -12,6 +12,10 @@ import datetime as dt
 import os
 import requests
 from tkinter import PhotoImage
+import time
+import threading
+from tkinter.scrolledtext import ScrolledText
+from flask import Flask, request, jsonify
 
 
 class Home:
@@ -23,7 +27,8 @@ class Home:
       self.name_list = []
       self.current_frame = None
       self.final_dataframe = None
-   
+      self.company_name = "Blueprint"
+      
    def load_texts(self):
       texts_df = pd.read_csv(self.current_csv)
       texts_df['Phone'] = texts_df['Phone'].fillna("").astype(str).str.replace(".0", "", regex=False)
@@ -43,7 +48,6 @@ class Home:
          self.name_list.append(name)
       print(self.name_list)
       
-
       
    # Upload CSV
    def upload_csv(self):
@@ -70,7 +74,7 @@ class Home:
    # Display CSV content
    def display_csv(self, csv_view):
       if self.current_csv:
-         df = pd.read_csv(self.final_dataframe).dropna()
+         df = self.final_dataframe.dropna()
          csv_view.delete(1.0, tk.END)
          csv_view.insert(tk.END, df.to_string(index=False))
       else:
@@ -93,19 +97,31 @@ class Home:
       
    def send_text(self, api_key_entry, text_entry):
       text = text_entry.get("1.0", tk.END).strip()
+      self.text_ids = []
       
       if text:
-         
          api_key = api_key_entry.get("1.0", tk.END).strip()
-         for number in self.final_dataframe['Phone']:
-            message = f"Hello, {self.final_dataframe['Name']}\n" + text
+         for index, number in enumerate(self.final_dataframe['Phone']):
+            message = f"Hello, {self.final_dataframe['Name'][index]}\n" + text
             
-            requests.post('https://textbelt.com/text', {
-         'phone': number,  
-         'message': message,  
-         'key': api_key
-      })
-                  
+            response = requests.post('https://textbelt.com/text', {
+               'phone': number,  
+               'message': message,
+               'replyWebhookUrl': 'http://107.201.157.230:5000/handle_sms',  
+               'key': api_key,
+
+            })
+            
+            response_data = response.json()
+         
+            if response_data['success']:
+               text_id = response_data['textId']
+               self.text_ids.append((number, text_id))
+               print(f"Message sent to {number}. Text ID: {text_id}")
+         else:
+            print("Failed.")    
+   
+         
       else:
          messagebox.showwarning("Warning", "Please upload a CSV, and enter a text.")
       
@@ -231,6 +247,7 @@ class Home:
       text_send_btn = ttk.Button(text_screen, text="Send", command=lambda: self.send_text(api_key_entry, text_entry), width=20)
       text_send_btn.pack(pady=7)
       
+      
       back_to_main_menu_btn = ttk.Button(text_screen, text="Back to Main Menu", command=lambda: self.show_frame(main_menu), width=30)
       back_to_main_menu_btn.pack(pady=0)
       
@@ -270,6 +287,5 @@ key = "553df227ee6b5643502d4fd312f13bc7cd833472vxmQm2Xy3anpwHqi07x33Pric" # Comp
 
 
 if __name__ == "__main__":
-   app = Home()
-   app.gui()
-
+   application = Home()
+   application.gui()
