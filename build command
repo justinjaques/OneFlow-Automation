@@ -1,0 +1,1 @@
+pyinstaller --onefile --windowed --add-data "OneFlow_Window_Icon.png:." --add-data "menu-background-image.png:." --icon=OneFlow_Logo.ico main_automation_panel.py
