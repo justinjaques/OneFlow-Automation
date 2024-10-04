@@ -1,7 +1,16 @@
-# OneFlow Automation Primary Panel Blueprint - for any questions, contact jmjaques01@gmail.com or (914-467-9943)
-# Re-Distribution or cloning of this software is strictly prohibited. Any attempts to do so will result in severe legal punishment.
-# Copyright, OneFlow Automation, 2024 <- We need to get this copyrighted
-# Justin Jaques
+# OneFlow Automation Software License Agreement
+#
+# For any questions, contact: jmjaques01@gmail.com or (914-467-9943)
+#
+# Re-distribution or cloning of this software is strictly prohibited without prior written permission from the authors. 
+# Any attempts to do so will result in legal actions as outlined under relevant jurisdiction.
+#
+# Copyright (C) 2024 OneFlow Automation. All rights reserved.
+# Unauthorized use of this software is strictly prohibited.
+# Commercial and non-commercial use, distribution, or modification of the software must adhere to the terms of this agreement.
+# License terms and conditions are available upon request. 
+# Contact for further inquiries: jmjaques01@gmail.com
+
 
 import smtplib
 import pandas as pd
@@ -9,13 +18,14 @@ import tkinter as tk
 from tkinter import messagebox, filedialog
 from tkinter import ttk
 import datetime as dt
-import os
 import requests
 from tkinter import PhotoImage
-import time
-import threading
-from tkinter.scrolledtext import ScrolledText
-from flask import Flask, request, jsonify
+import sys
+import os
+import webbrowser
+
+
+
 
 
 class Home:
@@ -130,6 +140,16 @@ class Home:
       else:
          messagebox.showwarning("Warning", "Please upload a CSV, and enter a text.")
          
+         
+   def resource_path(self, relative_path):
+      try:
+         base_path = sys._MEIPASS
+      except Exception:
+         base_path = os.path.abspath(".")
+         print("Error loading resource")
+
+      return os.path.join(base_path, relative_path)
+
 
    def send_email(self, subject_entry, body_entry):
       subject = subject_entry.get()
@@ -165,6 +185,10 @@ class Home:
       style.configure("TLabel", background="#f0f0f0", font=("Helvetica", 14))
       style.configure("TEntry", padding=5, font=("Helvetica", 12))
       style.configure("TText", font=("Helvetica", 12))
+      
+      
+
+      
 
       # Create the frames for each section
       main_menu = ttk.Frame(root, padding=100, style="TFrame")
@@ -178,7 +202,7 @@ class Home:
          frame.grid(row=0, column=0, sticky="nsew")
 
       
-      menu_bg_image = tk.PhotoImage(file="menu-background-image.png")
+      menu_bg_image = tk.PhotoImage(file=self.resource_path("menu-background-image.png"))
       background_label = tk.Label(main_menu, image=menu_bg_image)
       background_label.place(x = -100, y=-100) 
       
@@ -189,6 +213,17 @@ class Home:
       text_btn = ttk.Button(main_menu, text="Send Mass Text", command=lambda: self.switch_frame(text_screen), width=30)
       text_btn.place(x=150, y=150)
       text_btn.config(cursor="hand2")
+      
+      
+      # Add copyright text at the bottom
+      copyright_label = ttk.Label(
+        main_menu, 
+        text="© OneFlow Automation, 2024. Re-distribution prohibited.", 
+        font=("Helvetica", 8), 
+        background="white"
+    )
+      copyright_label.place(x=-100, y=390, anchor="w")  # Place it at the bottom-left of the window
+      
 
       view_csv_btn = ttk.Button(main_menu, text="View Current CSV", command=lambda: self.switch_frame(csv_view_screen), width=30)
       view_csv_btn.place(x=150, y=200)
@@ -260,6 +295,10 @@ class Home:
       text_send_btn = ttk.Button(text_screen, text="Send", command=lambda: self.send_text(api_key_entry, text_entry, texts_left_entry), width=20)
       text_send_btn.pack(pady=7)
       
+      get_more_credits_btn = ttk.Button(text_screen, text="Buy More", command=lambda: webbrowser.open("https://textbelt.com/purchase/?generateKey=1"), width=10)
+      get_more_credits_btn.place(x=40, y=160)
+   
+      
       
       back_to_main_menu_btn = ttk.Button(text_screen, text="Back to Main Menu", command=lambda: self.show_frame(main_menu), width=30)
       back_to_main_menu_btn.pack(pady=0)
@@ -288,10 +327,10 @@ class Home:
 
 
       root.config(background='white')
-      icon = PhotoImage(file="OneFlow_Window_Icon.png")  
+      icon = PhotoImage(file=self.resource_path("OneFlow_Window_Icon.png"))  
       root.iconphoto(False, icon)
       root.mainloop()
-
+         
 
 
 key = "553df227ee6b5643502d4fd312f13bc7cd833472vxmQm2Xy3anpwHqi07x33Pric" # Companies will have to use their own API Key.
@@ -299,7 +338,10 @@ key = "553df227ee6b5643502d4fd312f13bc7cd833472vxmQm2Xy3anpwHqi07x33Pric" # Comp
 
 
 
+
+
+
 if __name__ == "__main__":
-   application = Home()
-   application.gui()
+    app = Home()  
+    app.gui() 
 
