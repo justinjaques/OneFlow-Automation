@@ -28,25 +28,23 @@ class Home:
       self.current_frame = None
       self.final_dataframe = None
       self.company_name = "Blueprint"
+      self.texts_remaining = ""
       
    def load_texts(self):
       texts_df = pd.read_csv(self.current_csv)
       texts_df['Phone'] = texts_df['Phone'].fillna("").astype(str).str.replace(".0", "", regex=False)
       for number in texts_df['Phone']:
          self.text_list.append(number)
-      print(self.text_list)
 
    def load_emails(self):
       emails_df = pd.read_csv(self.current_csv)
       for email in emails_df['Email']:
          self.email_list.append(email)
-      print(self.email_list)
    
    def load_names(self):
       names_df = pd.read_csv(self.current_csv)
       for name in names_df['Name']:
          self.name_list.append(name)
-      print(self.name_list)
       
       
    # Upload CSV
@@ -95,7 +93,7 @@ class Home:
       server.quit()
       messagebox.showinfo("Success", "Emails have been sent successfully!")
       
-   def send_text(self, api_key_entry, text_entry):
+   def send_text(self, api_key_entry, text_entry, texts_left_entry):
       text = text_entry.get("1.0", tk.END).strip()
       self.text_ids = []
       
@@ -113,18 +111,25 @@ class Home:
             })
             
             response_data = response.json()
+            
+            self.texts_remaining = response_data['quotaRemaining']
+            
+            if 'quotaRemaining' in response_data:
+                self.texts_remaining = response_data['quotaRemaining']
+                texts_left_entry.config(state="normal")
+                texts_left_entry.delete(1.0, tk.END)
+                texts_left_entry.insert(tk.END, str(self.texts_remaining)) 
+                texts_left_entry.config(state="disabled")
          
             if response_data['success']:
                text_id = response_data['textId']
                self.text_ids.append((number, text_id))
-               print(f"Message sent to {number}. Text ID: {text_id}")
-         else:
-            print("Failed.")    
+
    
          
       else:
          messagebox.showwarning("Warning", "Please upload a CSV, and enter a text.")
-      
+         
 
    def send_email(self, subject_entry, body_entry):
       subject = subject_entry.get()
@@ -237,6 +242,14 @@ class Home:
       api_key_entry.pack(pady=0)
       api_key_entry.insert(tk.END, key)
       
+      texts_left_label = ttk.Label(text_screen, text="Texts left:")
+      texts_left_label.place(x=50, y=90)
+      texts_left_entry = tk.Text(text_screen, height=1, width=15)
+      texts_left_entry.place(x=35, y=120)
+      texts_left_entry.insert(tk.END, str(self.texts_remaining))
+      texts_left_entry.config(state="disabled") 
+      
+      
       
       text_screen_label = ttk.Label(text_screen, text="Text:")
       text_screen_label.pack(pady=0)
@@ -244,7 +257,7 @@ class Home:
       text_entry.pack(pady=0)
       
       
-      text_send_btn = ttk.Button(text_screen, text="Send", command=lambda: self.send_text(api_key_entry, text_entry), width=20)
+      text_send_btn = ttk.Button(text_screen, text="Send", command=lambda: self.send_text(api_key_entry, text_entry, texts_left_entry), width=20)
       text_send_btn.pack(pady=7)
       
       
@@ -289,3 +302,4 @@ key = "553df227ee6b5643502d4fd312f13bc7cd833472vxmQm2Xy3anpwHqi07x33Pric" # Comp
 if __name__ == "__main__":
    application = Home()
    application.gui()
+
