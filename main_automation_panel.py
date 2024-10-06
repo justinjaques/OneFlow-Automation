@@ -164,7 +164,7 @@ class Home:
          message['To'] = email
          message['Subject'] = personalized_subject
          
-         message.attach(MIMEText(personalized_body, 'plain'))
+         message.attach(MIMEText(personalized_body, 'html'))
          
          if attachment_path:
             with open(attachment_path, 'rb') as attachment:
@@ -290,12 +290,43 @@ class Home:
       
       body_entry = ctk.CTkTextbox(email_window, height=300, width=800)
       body_entry.place(x=90, y=250)
+      
+
+      html_buttons_frame = ctk.CTkFrame(email_window)
+      html_buttons_frame.place(x=250, y=570)
+      
+      def insert_html(html_snippet):
+         body_entry.insert(tk.END, html_snippet)
+         
+
+      # Button for Bold text
+      bold_btn = ctk.CTkButton(html_buttons_frame, text="Bold", command=lambda: insert_html("<b></b>"), width=80, fg_color="#4CAF50")
+      bold_btn.pack(side=tk.LEFT, padx=5)
+
+      # Button for Italic text
+      italic_btn = ctk.CTkButton(html_buttons_frame, text="Italic", command=lambda: insert_html("<i></i>"), width=80, fg_color="#4CAF50")
+      italic_btn.pack(side=tk.LEFT, padx=5)
+
+      # Button for Hyperlink
+      link_btn = ctk.CTkButton(html_buttons_frame, text="Link", command=lambda: insert_html('<a href="URL">Link Text</a>'), width=80, fg_color="#4CAF50")
+      link_btn.pack(side=tk.LEFT, padx=5)
+
+      # Button for Image
+      img_btn = ctk.CTkButton(html_buttons_frame, text="Image", command=lambda: insert_html('<img src="IMAGE_URL" alt="Image Description"/>'), width=80, fg_color="#4CAF50")
+      img_btn.pack(side=tk.LEFT, padx=5)
+      
+      # Button for Image
+      custom_text_btn = ctk.CTkButton(html_buttons_frame, text="Custom Text", command=lambda: insert_html('<p style="font-size: 20px;"></p>'), width=80, fg_color="#4CAF50")
+      custom_text_btn.pack(side=tk.LEFT, padx=5)
+      
+
+      
 
       send_email_btn = ctk.CTkButton(email_window, text="Send E-Mail", command=lambda: self.send_email(subject_entry, body_entry, self.selected_attachment_path),  width=170, height=40, corner_radius=3, fg_color="#4CAF50")
       send_email_btn.place(x=380, y=650)
       
       
-      insert_file_btn = ctk.CTkButton(email_window, text="Attach Image", command=lambda: self.handle_email_attachment(),  width=170, height=40, corner_radius=3, fg_color="#4CAF50")
+      insert_file_btn = ctk.CTkButton(email_window, text="Attach File", command=lambda: self.handle_email_attachment(),  width=170, height=40, corner_radius=3, fg_color="#4CAF50")
       insert_file_btn.place(x=600, y=650)
       
       use_ai_email_btn = ctk.CTkButton(email_window, text="Use AI", command=lambda: self.open_ai_window(),  width=170, height=40, corner_radius=3, fg_color="#4CAF50")
@@ -427,7 +458,7 @@ class Home:
       # Add copyright text at the bottom
       copyright_label = ttk.Label(
         main_menu, 
-        text="© Justin Jaques, 2024. Re-distribution prohibited.", 
+        text="© OneFlow Automation, 2024. Re-distribution prohibited.", 
         font=("Helvetica", 8), 
     )
       copyright_label.place(x=0, y=510, anchor="w", width=800)  
@@ -481,6 +512,10 @@ class Home:
 
 
 key = "553df227ee6b5643502d4fd312f13bc7cd833472vxmQm2Xy3anpwHqi07x33Pric" # Companies will have to use their own API Key.
+
+
+
+
 
 
 
