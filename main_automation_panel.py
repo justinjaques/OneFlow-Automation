@@ -26,6 +26,12 @@ import webbrowser
 import google.generativeai as genai
 from tkinter import Toplevel
 import customtkinter as ctk
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
+
+
 
 genai.configure(api_key="AIzaSyDJMgwiv4rTqsicBRphBkleRi_ZnyWpbF8")
 
@@ -45,11 +51,12 @@ class Home:
       self.final_dataframe = None
       self.client_name = "Justin Jaques"
       self.texts_remaining = ""
-      # Create main window
       self.root = ctk.CTk()
       self.icon = PhotoImage(file=self.resource_path("OneFlow_Window_Icon.png"))
       self.first_name_reference = "[FirstName]"  
       self.last_name_reference = "[LastName]"
+      self.selected_attachment_path = None
+  
       
       
    # Loading the CSV Data, and getting the specific credentials such as Name, Email and Phone   
@@ -64,27 +71,28 @@ class Home:
       
   # Opening the window for AI use
    def open_ai_window(self):
-     ai_window = Toplevel(self.root)
+     ai_window = ctk.CTkToplevel(self.root)
      ai_window.title("OneAI - Powered by Gemini")
      ai_window.geometry("1000x600")
      ai_window.resizable(False, False)
      ai_window.iconphoto(False, self.icon)
      
      
-     ai_response_box = tk.Text(ai_window, height=25, width=119, wrap=tk.WORD)
+     ai_response_box = ctk.CTkTextbox(ai_window, height=400, width=940, wrap=tk.WORD)
      ai_response_box.place(x=20, y=20)
-     ai_response_box.config(state="disabled")
+     
      
     # Create a vertical scrollbar
      scrollbar = tk.Scrollbar(ai_window, command=ai_response_box.yview)
      scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
      # Configure the text box to use the scrollbar
-     ai_response_box.config(yscrollcommand=scrollbar.set)
+     ai_response_box.configure(yscrollcommand=scrollbar.set)
      
-     ai_query_box = tk.Text(ai_window, height=1, width=80)
-     ai_query_box.place(x=125, y=500)
-     
+     ai_query_box = ctk.CTkTextbox(ai_window, height=1, width=800)
+     ai_query_box.place(x=90, y=500)
+     ai_response_box.insert(tk.END, "OneAi: \n\n" + "Hi! I am OneAI, here to assist you with anything you need. Type a prompt such as: 'Draft a text to a potential client' below to get started!" + "\n")
+     ai_response_box.configure(state="disabled")
      ai_query_box.bind("<Return>", lambda event: self.handle_query(ai_query_box, ai_response_box))
      
      
@@ -96,16 +104,16 @@ class Home:
       
       
       ai_query_box.delete("1.0", tk.END)
-      ai_response_box.config(state="normal")     
+      ai_response_box.configure(state="normal")     
       ai_response_box.delete("1.0", tk.END)
-      ai_response_box.config(state="disabled")
+      ai_response_box.configure(state="disabled")
       self.send_ai_query(user_query, ai_response_box)
 
    def send_ai_query(self, user_query, ai_response_box):
       response = model.generate_content(user_query)
-      ai_response_box.config(state="normal")
-      ai_response_box.insert(tk.END, response.text + "\n")
-      ai_response_box.config(state="disabled")
+      ai_response_box.configure(state="normal")
+      ai_response_box.insert(tk.END, "OneAi: \n\n" + response.text + "\n")
+      ai_response_box.configure(state="disabled")
       
 
          
@@ -139,7 +147,7 @@ class Home:
          messagebox.showwarning("Warning", "No CSV uploaded!")
          
    # Function to handle e-mail sending.      
-   def send_mass_email(self, subject, body):
+   def send_mass_email(self, subject, body, attachment_path=None):
       server = smtplib.SMTP("smtp.gmail.com", 587)
       server.starttls()
       server.login(self.auth[0], self.auth[1])
@@ -148,9 +156,26 @@ class Home:
          personalized_body = body.replace(self.first_name_reference, self.final_dataframe["First Name"][index])
          personalized_body = personalized_body.replace(self.last_name_reference, self.final_dataframe['Last Name'][index])
          
-         message = f"From: {self.auth[0]}\nTo: {email}\nSubject: {subject}\n\n + {personalized_body}" # Structure for the e-mail
+         personalized_subject = subject.replace(self.first_name_reference, self.final_dataframe["First Name"][index])
+         personalized_subject = personalized_subject.replace(self.last_name_reference, self.final_dataframe['Last Name'][index])
+         
+         message = MIMEMultipart()
+         message['From'] = self.auth[0]
+         message['To'] = email
+         message['Subject'] = personalized_subject
+         
+         message.attach(MIMEText(personalized_body, 'plain'))
+         
+         if attachment_path:
+            with open(attachment_path, 'rb') as attachment:
+               part = MIMEBase('application', 'octet-stream')
+               part.set_payload(attachment.read())
+               encoders.encode_base64(part)
+               part.add_header('Content-Disposition', f'attachment; filename={os.path.basename(attachment_path)}')
+               message.attach(part)
+         
          try:
-               server.sendmail(self.auth[0], email, message)
+               server.sendmail(self.auth[0], email, message.as_string())
          except Exception as e:
                messagebox.showerror("Error", f"Failed to send email to {email}: {e}")
 
@@ -218,12 +243,12 @@ class Home:
 
 
    # Function that actually sending the e-mail after the data has been prepared.
-   def send_email(self, subject_entry, body_entry):
-      subject = subject_entry.get()
+   def send_email(self, subject_entry, body_entry, selected_attachment_path):
+      subject = subject_entry.get("1.0", tk.END).strip()
       body = body_entry.get("1.0", tk.END).strip()
 
       if self.current_csv and subject and body:
-         self.send_mass_email(subject, body)
+         self.send_mass_email(subject, body, selected_attachment_path)
       else:
          messagebox.showwarning("Warning", "Please upload a CSV, and enter subject and body.")
          
@@ -237,6 +262,15 @@ class Home:
       self.current_frame = frame
       self.show_frame(frame)
       
+   def handle_email_attachment(self):
+      attachment_path = filedialog.askopenfilename(filetypes=[("All files", "*.*"), ("PDF files", "*.pdf"), ("CSV files", "*.csv"), ("Excel files", "*.xls *.xlsx"), ("Images", "*.png *.jpg *.jpeg")])
+      
+      if attachment_path:
+         self.selected_attachment_path = attachment_path
+         messagebox.showinfo("Success", f"Image '{os.path.basename(attachment_path)}' has been attached!")
+      else:
+         self.selected_image_path = None
+         messagebox.showwarning("Warning", "No image selected.")
       
    def open_email_window(self):
       email_window = ctk.CTkToplevel(self.root)
@@ -257,20 +291,38 @@ class Home:
       body_entry = ctk.CTkTextbox(email_window, height=300, width=800)
       body_entry.place(x=90, y=250)
 
-      send_email_btn = ctk.CTkButton(email_window, text="Send E-Mail", command=lambda: self.send_email(subject_entry, body_entry),  width=170, height=40, corner_radius=0, fg_color="#4CAF50")
-      send_email_btn.place(x=380, y=600)
+      send_email_btn = ctk.CTkButton(email_window, text="Send E-Mail", command=lambda: self.send_email(subject_entry, body_entry, self.selected_attachment_path),  width=170, height=40, corner_radius=3, fg_color="#4CAF50")
+      send_email_btn.place(x=380, y=650)
+      
+      
+      insert_file_btn = ctk.CTkButton(email_window, text="Attach Image", command=lambda: self.handle_email_attachment(),  width=170, height=40, corner_radius=3, fg_color="#4CAF50")
+      insert_file_btn.place(x=600, y=650)
+      
+      use_ai_email_btn = ctk.CTkButton(email_window, text="Use AI", command=lambda: self.open_ai_window(),  width=170, height=40, corner_radius=3, fg_color="#4CAF50")
+      use_ai_email_btn.place(x=160, y=650)
+      
+      insert_first_name_email_btn = ctk.CTkButton(email_window, text="Insert First Name", command=lambda: body_entry.insert("insert", "[FirstName]"),  width=170, height=40, corner_radius=3, fg_color="#4CAF50")
+      insert_first_name_email_btn.place(x=160, y=720)
+      
+      insert_last_name_email_btn = ctk.CTkButton(email_window, text="Insert Last Name", command=lambda: body_entry.insert("insert", "[LastName]"),  width=170, height=40, corner_radius=3, fg_color="#4CAF50")
+      insert_last_name_email_btn.place(x=380, y=720)
+      
+      use_ai_email_btn = ctk.CTkButton(email_window, text="Use AI", command=lambda: self.open_ai_window(),  width=170, height=40, corner_radius=3, fg_color="#4CAF50")
+      use_ai_email_btn.place(x=160, y=650)
+
+
 
    
    def open_text_window(self):
       text_window = ctk.CTkToplevel(self.root)
-      text_window.title("OneFlow Automatoin - Text")
+      text_window.title("OneFlow Automation - Text")
       text_window.geometry("800x520")
       text_window.resizable(False, False)
       
       
       api_key_label = ctk.CTkLabel(text_window, text="API Key:")
       api_key_label.pack(pady=0)
-      api_key_entry = ctk.CTkTextbox(text_window, height=1, width=450)
+      api_key_entry = ctk.CTkTextbox(text_window, height=1, width=480)
       api_key_entry.pack(pady=0)
       api_key_entry.insert(tk.END, key)
       
@@ -290,19 +342,26 @@ class Home:
       
       
       
-      text_send_btn = ctk.CTkButton(text_window, text="Send", command=lambda: self.send_text(api_key_entry, text_entry, texts_left_entry, greeting_text_entry, signature_text_entry), width=110, height=32, corner_radius=0, fg_color="#4CAF50")
+      text_send_btn = ctk.CTkButton(text_window, text="Send", command=lambda: self.send_text(api_key_entry, text_entry, texts_left_entry, greeting_text_entry, signature_text_entry), width=110, height=32, corner_radius=3, fg_color="#4CAF50")
       text_send_btn.pack(pady=7)
       
       text_ai_btn = ctk.CTkButton(text_window, text="Use AI", command=lambda: self.open_ai_window(), width=120, height=38, corner_radius=3, fg_color="#4CAF50")
       text_ai_btn.place(x=620, y=150)
       
+      insert_first_name_btn = ctk.CTkButton(text_window, text="Insert First Name", command=lambda: text_entry.insert("insert", "[FirstName]"), width=120, height=30, corner_radius=3, fg_color="#4CAF50")
+      insert_first_name_btn.place(x=620, y=300)
+      
+      
+      insert_last_name_btn = ctk.CTkButton(text_window, text="Insert Last Name", command=lambda: text_entry.insert("insert", "[FirstName]"), width=120, height=30, corner_radius=3, fg_color="#4CAF50")
+      insert_last_name_btn.place(x=620, y=340)
+
 
       greeting_text_label = ctk.CTkLabel(text_window, text="Greeting:", font=("Arial", 10))
       greeting_text_label.place(x=20, y=250)
       
       greeting_text_entry =  ctk.CTkTextbox(text_window, height=1, width=200)
       greeting_text_entry.place(x=20, y=280)
-      greeting_text_entry.insert("1.0", "Good afternoon")
+      greeting_text_entry.insert("1.0", "Good afternoon [FirstName]")
       
       
       signature_text_label = ctk.CTkLabel(text_window, text="Signature:", font=("Arial", 10))
@@ -325,7 +384,7 @@ class Home:
       ctk.set_default_color_theme("blue")
 
       
-      self.root.title("OneFlow Automation Panel")
+      self.root.title("OneFlow Automation Home Panel")
       self.root.geometry("800x520")
       self.root.resizable(False, False)
 
@@ -339,9 +398,6 @@ class Home:
       style.configure("TLabel", background="#f0f0f0", font=("Helvetica", 14))
       style.configure("TEntry", padding=5, font=("Helvetica", 12))
       style.configure("TText", font=("Helvetica", 12))
-      
-      
-
       
 
       # Create the frames for each section
@@ -389,31 +445,28 @@ class Home:
       exit_btn.place(x=300, y=440)
       exit_btn.configure(cursor="hand2")
 
-      # CSV Upload Screen 
-      csv_upload_title = ttk.Label(csv_upload, text="Upload CSV", font=("Arial", 24))
-      csv_upload_title.place(x=120, y=-90)
 
-      upload_csv_btn = ctk.CTkButton(csv_upload, text="Select CSV File", command=self.upload_csv, width=120, height=32, corner_radius=3, fg_color="#4CAF50")
-      upload_csv_btn.pack(pady=10)
+      upload_csv_btn = ctk.CTkButton(csv_upload, text="Select CSV File", command=self.upload_csv, width=160, height=70, corner_radius=3, fg_color="#4CAF50")
+      upload_csv_btn.place(x=325, y=200)
 
-      back_btn = ctk.CTkButton(csv_upload, text="Back to Main Menu", command=lambda: self.show_frame(main_menu), width=120, height=32, corner_radius=3, fg_color="#4CAF50")
-      back_btn.pack(pady=10)
+      back_btn = ctk.CTkButton(csv_upload, text="Back to Main Menu", command=lambda: self.show_frame(main_menu), width=160, height=70, corner_radius=3, fg_color="#4CAF50")
+      back_btn.place(x=325, y=300)
 
   
       # CSV Viewing Screen 
-      csv_view_title = ttk.Label(csv_view_screen, text="Current CSV", font=("Arial", 24))
-      csv_view_title.pack(pady=20)
+      csv_view_title = ctk.CTkLabel(csv_view_screen, text="Current CSV", font=("Arial", 24), text_color="black")
+      csv_view_title.place(x=335, y=55)
       
 
-      csv_view = tk.Text(csv_view_screen, height=10, width=60)
-      csv_view.pack(pady=10)
+      csv_view = ctk.CTkTextbox(csv_view_screen, height=220, width=500)
+      csv_view.place(x=150, y=100)
       
 
-      refresh_btn = ttk.Button(csv_view_screen, text="Refresh CSV", command=lambda: self.display_csv(csv_view), width=30)
-      refresh_btn.pack(pady=10)
+      refresh_btn = ctk.CTkButton(csv_view_screen, text="Refresh CSV", command=lambda: self.display_csv(csv_view), width=200, height=40, corner_radius=3, fg_color="#4CAF50")
+      refresh_btn.place(x=150, y=350)
 
-      back_to_menu_btn = ttk.Button(csv_view_screen, text="Back to Main Menu", command=lambda: self.show_frame(main_menu), width=30)
-      back_to_menu_btn.pack(pady=10)
+      back_to_menu_btn = ctk.CTkButton(csv_view_screen, text="Back to Main Menu", command=lambda: self.show_frame(main_menu), width=200, height=40, corner_radius=3, fg_color="#4CAF50")
+      back_to_menu_btn.place(x=450, y=350)
 
 
    
@@ -434,6 +487,4 @@ key = "553df227ee6b5643502d4fd312f13bc7cd833472vxmQm2Xy3anpwHqi07x33Pric" # Comp
 if __name__ == "__main__":
     app = Home()  
     app.gui() 
-
-
 
