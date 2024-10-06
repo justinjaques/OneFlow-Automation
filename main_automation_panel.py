@@ -23,11 +23,15 @@ from tkinter import PhotoImage
 import sys
 import os
 import webbrowser
+import google.generativeai as genai
+from tkinter import Toplevel
+
+genai.configure(api_key="AIzaSyDJMgwiv4rTqsicBRphBkleRi_ZnyWpbF8")
+
+model = genai.GenerativeModel("gemini-1.5-flash")
 
 
-
-
-
+# Primary Application Class - Handles All E-Mail and Text Processes
 class Home:
    def __init__(self):
       self.current_csv = ''
@@ -39,35 +43,78 @@ class Home:
       self.final_dataframe = None
       self.company_name = "Blueprint"
       self.texts_remaining = ""
+      self.root = tk.Tk()
+      self.icon = PhotoImage(file=self.resource_path("OneFlow_Window_Icon.png"))  
       
-   def load_texts(self):
-      texts_df = pd.read_csv(self.current_csv)
-      texts_df['Phone'] = texts_df['Phone'].fillna("").astype(str).str.replace(".0", "", regex=False)
-      for number in texts_df['Phone']:
-         self.text_list.append(number)
+   # Loading the CSV Data, and getting the specific credentials such as Name, Email and Phone   
+   def load_data(self):
+      df = pd.read_csv(self.current_csv)
+      df['Phone'] = df['Phone'].fillna("").astype(str).str.replace(".0", "", regex=False)
+      self.name_list = df['Name'].dropna().tolist()
+      self.email_list = df['Email'].dropna().tolist()
+      self.text_list = df['Phone'].dropna().tolist()
+      
+      
+  # Opening the window for AI use
+   def open_ai_window(self):
+     ai_window = Toplevel(self.root)
+     ai_window.title("OneAI - Powered by Gemini")
+     ai_window.geometry("1000x600")
+     ai_window.resizable(False, False)
+     ai_window.iconphoto(False, self.icon)
+     
+     
+     ai_response_box = tk.Text(ai_window, height=25, width=119, wrap=tk.WORD)
+     ai_response_box.place(x=20, y=20)
+     ai_response_box.config(state="disabled")
+     
+    # Create a vertical scrollbar
+     scrollbar = tk.Scrollbar(ai_window, command=ai_response_box.yview)
+     scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-   def load_emails(self):
-      emails_df = pd.read_csv(self.current_csv)
-      for email in emails_df['Email']:
-         self.email_list.append(email)
-   
-   def load_names(self):
-      names_df = pd.read_csv(self.current_csv)
-      for name in names_df['Name']:
-         self.name_list.append(name)
+     # Configure the text box to use the scrollbar
+     ai_response_box.config(yscrollcommand=scrollbar.set)
+     
+     ai_query_box = tk.Text(ai_window, height=1, width=80)
+     ai_query_box.place(x=125, y=500)
+     
+     ai_query_box.bind("<Return>", lambda event: self.handle_query(ai_query_box, ai_response_box))
+     
+     
+   def handle_query(self, ai_query_box, ai_response_box):
+      user_query = ai_query_box.get("1.0", tk.END).strip()
+      
+      if not user_query:
+         return
       
       
-   # Upload CSV
+      ai_query_box.delete("1.0", tk.END)
+      ai_response_box.config(state="normal")     
+      ai_response_box.delete("1.0", tk.END)
+      ai_response_box.config(state="disabled")
+      self.send_ai_query(user_query, ai_response_box)
+
+   def send_ai_query(self, user_query, ai_response_box):
+      response = model.generate_content(user_query)
+      ai_response_box.config(state="normal")
+      ai_response_box.insert(tk.END, response.text + "\n")
+      ai_response_box.config(state="disabled")
+      
+
+     
+     
+     
+     
+      
+         
+   # Handling uploading the CSV 
    def upload_csv(self):
       self.current_csv = filedialog.askopenfilename(filetypes=[("CSV Files", "*.csv")])
       if self.current_csv:
          frame = pd.read_csv(self.current_csv)
          self.list = frame.dropna().values.flatten().tolist()
          messagebox.showinfo("Success", "CSV file uploaded successfully!")
-         self.load_texts()
-         self.load_emails()
-         self.load_names()
-         
+         self.load_data()
          person_dict = {
             'Name': self.name_list,
             'Phone': self.text_list,
@@ -79,7 +126,7 @@ class Home:
          
          
 
-   # Display CSV content
+   # Displaying the CSV content to the user on the CSV View page
    def display_csv(self, csv_view):
       if self.current_csv:
          df = self.final_dataframe.dropna()
@@ -88,13 +135,14 @@ class Home:
       else:
          messagebox.showwarning("Warning", "No CSV uploaded!")
          
+   # Function to handle e-mail sending.      
    def send_mass_email(self, subject, body):
       server = smtplib.SMTP("smtp.gmail.com", 587)
       server.starttls()
       server.login(self.auth[0], self.auth[1])
 
       for email in self.final_dataframe['Email']:
-         message = f"From: {self.auth[0]}\nTo: {email}\nSubject: {subject}\n\n + {body}"
+         message = f"From: {self.auth[0]}\nTo: {email}\nSubject: {subject}\n\n + {body}" # Structure for the e-mail
          try:
                server.sendmail(self.auth[0], email, message)
          except Exception as e:
@@ -103,6 +151,7 @@ class Home:
       server.quit()
       messagebox.showinfo("Success", "Emails have been sent successfully!")
       
+    # Function to handle sending texts  
    def send_text(self, api_key_entry, text_entry, texts_left_entry):
       text = text_entry.get("1.0", tk.END).strip()
       self.text_ids = []
@@ -110,8 +159,9 @@ class Home:
       if text:
          api_key = api_key_entry.get("1.0", tk.END).strip()
          for index, number in enumerate(self.final_dataframe['Phone']):
-            message = f"Hello, {self.final_dataframe['Name'][index]}\n" + text
+            message = f"Hello, {self.final_dataframe['Name'][index]}\n" + text + "\n" +"Sincerely,\n" + self.company_name # The format the text will follow
             
+            # Sending a request to the textbelt API to send a text
             response = requests.post('https://textbelt.com/text', {
                'phone': number,  
                'message': message,
@@ -122,6 +172,7 @@ class Home:
             
             response_data = response.json()
             
+            # Getting the amount of texts remaining from the returned JSON
             self.texts_remaining = response_data['quotaRemaining']
             
             if 'quotaRemaining' in response_data:
@@ -135,12 +186,11 @@ class Home:
                text_id = response_data['textId']
                self.text_ids.append((number, text_id))
 
-   
-         
       else:
          messagebox.showwarning("Warning", "Please upload a CSV, and enter a text.")
          
-         
+
+   # The resource path for files when running the executable         
    def resource_path(self, relative_path):
       try:
          base_path = sys._MEIPASS
@@ -151,6 +201,7 @@ class Home:
       return os.path.join(base_path, relative_path)
 
 
+   # Function that actually sending the e-mail after the data has been prepared.
    def send_email(self, subject_entry, body_entry):
       subject = subject_entry.get()
       body = body_entry.get("1.0", tk.END).strip()
@@ -161,6 +212,7 @@ class Home:
          messagebox.showwarning("Warning", "Please upload a CSV, and enter subject and body.")
          
    
+   # Tkinter GUI methods
    @staticmethod
    def show_frame(frame):
       frame.tkraise()
@@ -170,10 +222,10 @@ class Home:
       self.show_frame(frame)
 
    def gui(self):
-      root = tk.Tk()
-      root.title("OneFlow Automation Panel")
-      root.geometry("800x500")
-      root.resizable(False, False)
+      
+      self.root.title("OneFlow Automation Panel")
+      self.root.geometry("800x500")
+      self.root.resizable(False, False)
 
       # Set theme
       style = ttk.Style()
@@ -191,11 +243,11 @@ class Home:
       
 
       # Create the frames for each section
-      main_menu = ttk.Frame(root, padding=100, style="TFrame")
-      csv_upload = ttk.Frame(root, padding=200, style="TFrame")
-      email_screen = ttk.Frame(root, padding=200, style="TFrame")
-      csv_view_screen = ttk.Frame(root, width=200, style="TFrame")
-      text_screen = ttk.Frame(root, width=500, style='TFrame')
+      main_menu = ttk.Frame(self.root, padding=100, style="TFrame")
+      csv_upload = ttk.Frame(self.root, padding=200, style="TFrame")
+      email_screen = ttk.Frame(self.root, padding=200, style="TFrame")
+      csv_view_screen = ttk.Frame(self.root, width=200, style="TFrame")
+      text_screen = ttk.Frame(self.root, width=500, style='TFrame')
 
 
       for frame in (main_menu, csv_upload, email_screen, csv_view_screen, text_screen):
@@ -218,11 +270,11 @@ class Home:
       # Add copyright text at the bottom
       copyright_label = ttk.Label(
         main_menu, 
-        text="© OneFlow Automation, 2024. Re-distribution prohibited.", 
+        text="© Justin Jaques, 2024. Re-distribution prohibited.", 
         font=("Helvetica", 8), 
         background="white"
     )
-      copyright_label.place(x=-100, y=390, anchor="w")  # Place it at the bottom-left of the window
+      copyright_label.place(x=-100, y=390, anchor="w")  
       
 
       view_csv_btn = ttk.Button(main_menu, text="View Current CSV", command=lambda: self.switch_frame(csv_view_screen), width=30)
@@ -233,11 +285,11 @@ class Home:
       upload_btn.place(x=150, y=250)
       upload_btn.config(cursor="hand2")
 
-      exit_btn = ttk.Button(main_menu, text="Exit", command=root.quit, width=30)
+      exit_btn = ttk.Button(main_menu, text="Exit", command=self.root.quit, width=30)
       exit_btn.place(x=150, y=300)
       exit_btn.config(cursor="hand2")
 
-      # CSV Upload Screen (centered)
+      # CSV Upload Screen 
       csv_upload_title = ttk.Label(csv_upload, text="Upload CSV", font=("Arial", 24))
       csv_upload_title.place(x=120, y=-90)
 
@@ -247,7 +299,7 @@ class Home:
       back_btn = ttk.Button(csv_upload, text="Back to Main Menu", command=lambda: self.show_frame(main_menu), width=30)
       back_btn.pack(pady=10)
 
-      # Email Sending Screen (centered)
+      # Email Sending Screen 
       email_screen_title = ttk.Label(email_screen, text="Send Mass E-Mail", font=("Arial", 24))
       email_screen_title.place(x=90, y=-190)
 
@@ -270,7 +322,6 @@ class Home:
       back_to_main_btn.pack(pady=10)
       
       # Text sending screen
-
       api_key_label = ttk.Label(text_screen, text="API Key:")
       api_key_label.pack(pady=0)
       api_key_entry = tk.Text(text_screen, height=1, width=65)
@@ -292,9 +343,17 @@ class Home:
       text_entry.pack(pady=0)
       
       
+      
       text_send_btn = ttk.Button(text_screen, text="Send", command=lambda: self.send_text(api_key_entry, text_entry, texts_left_entry), width=20)
       text_send_btn.pack(pady=7)
       
+      text_ai_btn = ttk.Button(text_screen, text="Use AI", command=lambda: self.open_ai_window(), width=15)
+      text_ai_btn.place(x=620, y=150)
+      
+
+      
+
+
       get_more_credits_btn = ttk.Button(text_screen, text="Buy More", command=lambda: webbrowser.open("https://textbelt.com/purchase/?generateKey=1"), width=10)
       get_more_credits_btn.place(x=40, y=160)
    
@@ -304,7 +363,7 @@ class Home:
       back_to_main_menu_btn.pack(pady=0)
       
 
-      # CSV Viewing Screen (centered)
+      # CSV Viewing Screen 
       csv_view_title = ttk.Label(csv_view_screen, text="Current CSV", font=("Arial", 24))
       csv_view_title.pack(pady=20)
       
@@ -312,8 +371,7 @@ class Home:
       csv_view = tk.Text(csv_view_screen, height=10, width=60)
       csv_view.pack(pady=10)
       
-      
-      
+
       refresh_btn = ttk.Button(csv_view_screen, text="Refresh CSV", command=lambda: self.display_csv(csv_view), width=30)
       refresh_btn.pack(pady=10)
 
@@ -321,15 +379,14 @@ class Home:
       back_to_menu_btn.pack(pady=10)
 
 
-
-      # Start the Tkinter loop
+   
       self.switch_frame(main_menu) # Make main menu the starting frame
 
 
-      root.config(background='white')
-      icon = PhotoImage(file=self.resource_path("OneFlow_Window_Icon.png"))  
-      root.iconphoto(False, icon)
-      root.mainloop()
+      self.root.config(background='white')
+      
+      self.root.iconphoto(False, self.icon)
+      self.root.mainloop()
          
 
 
