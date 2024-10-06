@@ -38,19 +38,24 @@ class Home:
       self.auth = ('OneFlowAutomation@gmail.com', 'npiv sqhm msnh acgw') # Replace with company automated G-Mail account.
       self.email_list = []
       self.text_list = []
-      self.name_list = []
+      self.first_name_list = []
+      self.last_name_list = []
       self.current_frame = None
       self.final_dataframe = None
-      self.company_name = "Blueprint"
+      self.client_name = "Justin Jaques"
       self.texts_remaining = ""
       self.root = tk.Tk()
-      self.icon = PhotoImage(file=self.resource_path("OneFlow_Window_Icon.png"))  
+      self.icon = PhotoImage(file=self.resource_path("OneFlow_Window_Icon.png"))
+      self.first_name_reference = "[FirstName]"  
+      self.last_name_reference = "[LastName]"
+      
       
    # Loading the CSV Data, and getting the specific credentials such as Name, Email and Phone   
    def load_data(self):
       df = pd.read_csv(self.current_csv)
       df['Phone'] = df['Phone'].fillna("").astype(str).str.replace(".0", "", regex=False)
-      self.name_list = df['Name'].dropna().tolist()
+      self.first_name_list = df['First Name'].dropna().tolist()
+      self.last_name_list = df['Last Name'].dropna().tolist()
       self.email_list = df['Email'].dropna().tolist()
       self.text_list = df['Phone'].dropna().tolist()
       
@@ -101,11 +106,6 @@ class Home:
       ai_response_box.config(state="disabled")
       
 
-     
-     
-     
-     
-      
          
    # Handling uploading the CSV 
    def upload_csv(self):
@@ -116,7 +116,8 @@ class Home:
          messagebox.showinfo("Success", "CSV file uploaded successfully!")
          self.load_data()
          person_dict = {
-            'Name': self.name_list,
+            'First Name': self.first_name_list,
+            'Last Name': self.last_name_list,
             'Phone': self.text_list,
             'Email': self.email_list
          }
@@ -141,8 +142,11 @@ class Home:
       server.starttls()
       server.login(self.auth[0], self.auth[1])
 
-      for email in self.final_dataframe['Email']:
-         message = f"From: {self.auth[0]}\nTo: {email}\nSubject: {subject}\n\n + {body}" # Structure for the e-mail
+      for index, email in enumerate(self.final_dataframe['Email']):
+         personalized_body = body.replace(self.first_name_reference, self.final_dataframe["First Name"][index])
+         personalized_body = personalized_body.replace(self.last_name_reference, self.final_dataframe['Last Name'][index])
+         
+         message = f"From: {self.auth[0]}\nTo: {email}\nSubject: {subject}\n\n + {personalized_body}" # Structure for the e-mail
          try:
                server.sendmail(self.auth[0], email, message)
          except Exception as e:
@@ -152,39 +156,49 @@ class Home:
       messagebox.showinfo("Success", "Emails have been sent successfully!")
       
     # Function to handle sending texts  
-   def send_text(self, api_key_entry, text_entry, texts_left_entry):
+   def send_text(self, api_key_entry, text_entry, texts_left_entry, greeting_text_entry, signature_text_entry):
       text = text_entry.get("1.0", tk.END).strip()
       self.text_ids = []
+      greeting = greeting_text_entry.get("1.0", tk.END).strip()
+      signature = signature_text_entry.get("1.0", tk.END).strip()
       
       if text:
-         api_key = api_key_entry.get("1.0", tk.END).strip()
-         for index, number in enumerate(self.final_dataframe['Phone']):
-            message = f"Hello, {self.final_dataframe['Name'][index]}\n" + text + "\n" +"Sincerely,\n" + self.company_name # The format the text will follow
-            
-            # Sending a request to the textbelt API to send a text
-            response = requests.post('https://textbelt.com/text', {
-               'phone': number,  
-               'message': message,
-               'replyWebhookUrl': 'http://107.201.157.230:5000/handle_sms',  
-               'key': api_key,
+         if self.final_dataframe is not None:
+            api_key = api_key_entry.get("1.0", tk.END).strip()
+            for index, number in enumerate(self.final_dataframe['Phone']):
+               personalized_greeting = greeting.replace(self.first_name_reference, self.final_dataframe["First Name"][index])
+               personalized_greeting = personalized_greeting.replace(self.last_name_reference, self.final_dataframe["Last Name"][index])
+               
+               personalized_signature = signature.replace(self.first_name_reference, self.final_dataframe["First Name"][index])
+               personalized_signature = personalized_signature.replace(self.last_name_reference, self.final_dataframe["Last Name"][index])
+               
+               personalized_text = text.replace(self.first_name_reference, self.final_dataframe["First Name"][index])
+               personalized_text = personalized_text.replace(self.last_name_reference, self.final_dataframe["Last Name"][index])
+               
+               message = f"{personalized_greeting} \n\n" + personalized_text + "\n\n" + f"{personalized_signature},\n" + self.client_name # The format the text will follow
+               
+               # Sending a request to the textbelt API to send a text
+               response = requests.post('https://textbelt.com/text', {
+                  'phone': number,  
+                  'message': message,
+                  'replyWebhookUrl': 'http://107.201.157.230:5000/handle_sms',  
+                  'key': api_key,
 
-            })
+               })
+               
+               response_data = response.json()
+
+               
+               if 'quotaRemaining' in response_data:
+                  self.texts_remaining = response_data['quotaRemaining']
+                  texts_left_entry.config(state="normal")
+                  texts_left_entry.delete(1.0, tk.END)
+                  texts_left_entry.insert(tk.END, str(self.texts_remaining)) 
+                  texts_left_entry.config(state="disabled")
             
-            response_data = response.json()
-            
-            # Getting the amount of texts remaining from the returned JSON
-            self.texts_remaining = response_data['quotaRemaining']
-            
-            if 'quotaRemaining' in response_data:
-                self.texts_remaining = response_data['quotaRemaining']
-                texts_left_entry.config(state="normal")
-                texts_left_entry.delete(1.0, tk.END)
-                texts_left_entry.insert(tk.END, str(self.texts_remaining)) 
-                texts_left_entry.config(state="disabled")
-         
-            if response_data['success']:
-               text_id = response_data['textId']
-               self.text_ids.append((number, text_id))
+               if response_data['success']:
+                  text_id = response_data['textId']
+                  self.text_ids.append((number, text_id))
 
       else:
          messagebox.showwarning("Warning", "Please upload a CSV, and enter a text.")
@@ -313,7 +327,7 @@ class Home:
       body_label.place(x=150, y=-30)
       
       body_entry = tk.Text(email_screen, height=10, width=50)
-      body_entry.pack(pady=5)
+      body_entry.pack(pady=0)
 
       send_email_btn = ttk.Button(email_screen, text="Send E-Mail", command=lambda: self.send_email(subject_entry, body_entry), width=30)
       send_email_btn.pack(pady=10)
@@ -344,15 +358,28 @@ class Home:
       
       
       
-      text_send_btn = ttk.Button(text_screen, text="Send", command=lambda: self.send_text(api_key_entry, text_entry, texts_left_entry), width=20)
+      text_send_btn = ttk.Button(text_screen, text="Send", command=lambda: self.send_text(api_key_entry, text_entry, texts_left_entry, greeting_text_entry, signature_text_entry), width=20)
       text_send_btn.pack(pady=7)
       
       text_ai_btn = ttk.Button(text_screen, text="Use AI", command=lambda: self.open_ai_window(), width=15)
       text_ai_btn.place(x=620, y=150)
       
 
+      greeting_text_label = tk.Label(text_screen, text="Greeting:", font=("Arial", 10))
+      greeting_text_label.place(x=20, y=250)
       
-
+      greeting_text_entry = tk.Text(text_screen, height=1, width=20)
+      greeting_text_entry.place(x=20, y=280)
+      greeting_text_entry.insert("1.0", "Good afternoon")
+      
+      
+      signature_text_label = tk.Label(text_screen, text="Signature:", font=("Arial", 10))
+      signature_text_label.place(x=20, y=330)
+      
+      signature_text_entry = tk.Text(text_screen, height=1, width=20)
+      signature_text_entry.place(x=20, y=360)
+      signature_text_entry.insert("1.0", "Sincerely")
+      
 
       get_more_credits_btn = ttk.Button(text_screen, text="Buy More", command=lambda: webbrowser.open("https://textbelt.com/purchase/?generateKey=1"), width=10)
       get_more_credits_btn.place(x=40, y=160)
@@ -401,4 +428,5 @@ key = "553df227ee6b5643502d4fd312f13bc7cd833472vxmQm2Xy3anpwHqi07x33Pric" # Comp
 if __name__ == "__main__":
     app = Home()  
     app.gui() 
+
 
