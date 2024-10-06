@@ -25,6 +25,7 @@ import os
 import webbrowser
 import google.generativeai as genai
 from tkinter import Toplevel
+import customtkinter as ctk
 
 genai.configure(api_key="AIzaSyDJMgwiv4rTqsicBRphBkleRi_ZnyWpbF8")
 
@@ -44,7 +45,8 @@ class Home:
       self.final_dataframe = None
       self.client_name = "Justin Jaques"
       self.texts_remaining = ""
-      self.root = tk.Tk()
+      # Create main window
+      self.root = ctk.CTk()
       self.icon = PhotoImage(file=self.resource_path("OneFlow_Window_Icon.png"))
       self.first_name_reference = "[FirstName]"  
       self.last_name_reference = "[LastName]"
@@ -234,11 +236,97 @@ class Home:
    def switch_frame(self, frame):
       self.current_frame = frame
       self.show_frame(frame)
+      
+      
+   def open_email_window(self):
+      email_window = ctk.CTkToplevel(self.root)
+      email_window.title("OneFlow Automation - E-mail")
+      email_window.geometry("1000x800")
+      email_window.resizable(False, False)
+      
+
+      subject_label = ctk.CTkLabel(email_window, text="E-Mail Subject:")
+      subject_label.place(x=440, y=50)
+      
+      subject_entry = ctk.CTkTextbox(email_window, width=400, height=20)
+      subject_entry.place(x=280, y=100)
+
+      body_label = ctk.CTkLabel(email_window, text="E-Mail Body:")
+      body_label.place(x=450, y=200)
+      
+      body_entry = ctk.CTkTextbox(email_window, height=300, width=800)
+      body_entry.place(x=90, y=250)
+
+      send_email_btn = ctk.CTkButton(email_window, text="Send E-Mail", command=lambda: self.send_email(subject_entry, body_entry),  width=170, height=40, corner_radius=0, fg_color="#4CAF50")
+      send_email_btn.place(x=380, y=600)
+
+   
+   def open_text_window(self):
+      text_window = ctk.CTkToplevel(self.root)
+      text_window.title("OneFlow Automatoin - Text")
+      text_window.geometry("800x520")
+      text_window.resizable(False, False)
+      
+      
+      api_key_label = ctk.CTkLabel(text_window, text="API Key:")
+      api_key_label.pack(pady=0)
+      api_key_entry = ctk.CTkTextbox(text_window, height=1, width=450)
+      api_key_entry.pack(pady=0)
+      api_key_entry.insert(tk.END, key)
+      
+      texts_left_label = ctk.CTkLabel(text_window, text="Texts left:")
+      texts_left_label.place(x=63, y=90)
+      texts_left_entry = ctk.CTkTextbox(text_window, height=1, width=100)
+      texts_left_entry.place(x=45, y=120)
+      texts_left_entry.insert(tk.END, str(self.texts_remaining))
+      texts_left_entry.configure(state="disabled") 
+      
+      
+      
+      text_screen_label = ctk.CTkLabel(text_window, text="Text:")
+      text_screen_label.pack(pady=0)
+      text_entry = ctk.CTkTextbox(text_window, height=340, width=340)
+      text_entry.pack(pady=0)
+      
+      
+      
+      text_send_btn = ctk.CTkButton(text_window, text="Send", command=lambda: self.send_text(api_key_entry, text_entry, texts_left_entry, greeting_text_entry, signature_text_entry), width=110, height=32, corner_radius=0, fg_color="#4CAF50")
+      text_send_btn.pack(pady=7)
+      
+      text_ai_btn = ctk.CTkButton(text_window, text="Use AI", command=lambda: self.open_ai_window(), width=120, height=38, corner_radius=3, fg_color="#4CAF50")
+      text_ai_btn.place(x=620, y=150)
+      
+
+      greeting_text_label = ctk.CTkLabel(text_window, text="Greeting:", font=("Arial", 10))
+      greeting_text_label.place(x=20, y=250)
+      
+      greeting_text_entry =  ctk.CTkTextbox(text_window, height=1, width=200)
+      greeting_text_entry.place(x=20, y=280)
+      greeting_text_entry.insert("1.0", "Good afternoon")
+      
+      
+      signature_text_label = ctk.CTkLabel(text_window, text="Signature:", font=("Arial", 10))
+      signature_text_label.place(x=20, y=330)
+      
+      signature_text_entry = ctk.CTkTextbox(text_window, height=1, width=200)
+      signature_text_entry.place(x=20, y=360)
+      signature_text_entry.insert("1.0", "Sincerely")
+      
+
+      get_more_credits_btn = ctk.CTkButton(text_window, text="Buy More", command=lambda: webbrowser.open("https://textbelt.com/purchase/?generateKey=1"), width=120, height=32, corner_radius=3, fg_color="#4CAF50")
+      get_more_credits_btn.place(x=36, y=160)
+  
+   
+   
 
    def gui(self):
       
+      ctk.set_appearance_mode("System")
+      ctk.set_default_color_theme("blue")
+
+      
       self.root.title("OneFlow Automation Panel")
-      self.root.geometry("800x500")
+      self.root.geometry("800x520")
       self.root.resizable(False, False)
 
       # Set theme
@@ -257,139 +345,61 @@ class Home:
       
 
       # Create the frames for each section
-      main_menu = ttk.Frame(self.root, padding=100, style="TFrame")
-      csv_upload = ttk.Frame(self.root, padding=200, style="TFrame")
-      email_screen = ttk.Frame(self.root, padding=200, style="TFrame")
-      csv_view_screen = ttk.Frame(self.root, width=200, style="TFrame")
-      text_screen = ttk.Frame(self.root, width=500, style='TFrame')
+      main_menu = ttk.Frame(self.root, width=800, height=800, style="TFrame")
+      csv_upload = ttk.Frame(self.root, width=200, height=200, style="TFrame")
+      csv_view_screen = ttk.Frame(self.root, width=200, height=200, style="TFrame")
 
 
-      for frame in (main_menu, csv_upload, email_screen, csv_view_screen, text_screen):
+
+      for frame in (main_menu, csv_upload, csv_view_screen):
          frame.grid(row=0, column=0, sticky="nsew")
 
       
-      menu_bg_image = tk.PhotoImage(file=self.resource_path("menu-background-image.png"))
-      background_label = tk.Label(main_menu, image=menu_bg_image)
-      background_label.place(x = -100, y=-100) 
+      email_btn = ctk.CTkButton(main_menu, text="Send E-Mails", command=lambda: self.open_email_window(), width=200, height=40, corner_radius=3, fg_color="#4CAF50")
+      email_btn.place(x=150, y=300)
+      email_btn.configure(cursor="hand2")
       
-      email_btn = ttk.Button(main_menu, text="Send Mass E-Mail", command=lambda: self.switch_frame(email_screen), width=30)
-      email_btn.place(x=150, y=100)
-      email_btn.config(cursor="hand2")
+      text_btn =  ctk.CTkButton(main_menu, text="Send Texts", command=lambda: self.open_text_window(), width=200, height=40, corner_radius=3, fg_color="#4CAF50")
+      text_btn.place(x=150, y=360)
+      text_btn.configure(cursor="hand2")
       
-      text_btn = ttk.Button(main_menu, text="Send Mass Text", command=lambda: self.switch_frame(text_screen), width=30)
-      text_btn.place(x=150, y=150)
-      text_btn.config(cursor="hand2")
-      
-      
+      oneflow_label = ctk.CTkLabel(main_menu, text="OneFlow", font=("Helvetica", 48, "bold"), text_color="black")
+      oneflow_label.place(x=300, y=20)
+         
+
+
       # Add copyright text at the bottom
       copyright_label = ttk.Label(
         main_menu, 
         text="© Justin Jaques, 2024. Re-distribution prohibited.", 
         font=("Helvetica", 8), 
-        background="white"
     )
-      copyright_label.place(x=-100, y=390, anchor="w")  
+      copyright_label.place(x=0, y=510, anchor="w", width=800)  
       
 
-      view_csv_btn = ttk.Button(main_menu, text="View Current CSV", command=lambda: self.switch_frame(csv_view_screen), width=30)
-      view_csv_btn.place(x=150, y=200)
-      view_csv_btn.config(cursor="hand2")
+      view_csv_btn = ctk.CTkButton(main_menu, text="View Current CSV", command=lambda: self.switch_frame(csv_view_screen), width=200, height=40, corner_radius=3, fg_color="#4CAF50")
+      view_csv_btn.place(x=450, y=300)
+      view_csv_btn.configure(cursor="hand2")
 
-      upload_btn = ttk.Button(main_menu, text="Upload CSV", command=lambda: self.switch_frame(csv_upload), width=30)
-      upload_btn.place(x=150, y=250)
-      upload_btn.config(cursor="hand2")
+      upload_btn = ctk.CTkButton(main_menu, text="Upload CSV", command=lambda: self.switch_frame(csv_upload), width=200, height=40, corner_radius=3, fg_color="#4CAF50")
+      upload_btn.place(x=450, y=360)
+      upload_btn.configure(cursor="hand2")
 
-      exit_btn = ttk.Button(main_menu, text="Exit", command=self.root.quit, width=30)
-      exit_btn.place(x=150, y=300)
-      exit_btn.config(cursor="hand2")
+      exit_btn = ctk.CTkButton(main_menu, text="Exit", command=self.root.quit, width=200, height=40, corner_radius=3, fg_color="#4CAF50")
+      exit_btn.place(x=300, y=440)
+      exit_btn.configure(cursor="hand2")
 
       # CSV Upload Screen 
       csv_upload_title = ttk.Label(csv_upload, text="Upload CSV", font=("Arial", 24))
       csv_upload_title.place(x=120, y=-90)
 
-      upload_csv_btn = ttk.Button(csv_upload, text="Select CSV File", command=self.upload_csv, width=30)
+      upload_csv_btn = ctk.CTkButton(csv_upload, text="Select CSV File", command=self.upload_csv, width=120, height=32, corner_radius=3, fg_color="#4CAF50")
       upload_csv_btn.pack(pady=10)
 
-      back_btn = ttk.Button(csv_upload, text="Back to Main Menu", command=lambda: self.show_frame(main_menu), width=30)
+      back_btn = ctk.CTkButton(csv_upload, text="Back to Main Menu", command=lambda: self.show_frame(main_menu), width=120, height=32, corner_radius=3, fg_color="#4CAF50")
       back_btn.pack(pady=10)
 
-      # Email Sending Screen 
-      email_screen_title = ttk.Label(email_screen, text="Send Mass E-Mail", font=("Arial", 24))
-      email_screen_title.place(x=90, y=-190)
-
-      subject_label = ttk.Label(email_screen, text="E-Mail Subject:")
-      subject_label.place(x=150, y=-130)
-      
-      subject_entry = ttk.Entry(email_screen, width=50)
-      subject_entry.place(x=50, y=-100)
-
-      body_label = ttk.Label(email_screen, text="E-Mail Body:")
-      body_label.place(x=150, y=-30)
-      
-      body_entry = tk.Text(email_screen, height=10, width=50)
-      body_entry.pack(pady=0)
-
-      send_email_btn = ttk.Button(email_screen, text="Send E-Mail", command=lambda: self.send_email(subject_entry, body_entry), width=30)
-      send_email_btn.pack(pady=10)
-
-      back_to_main_btn = ttk.Button(email_screen, text="Back to Main Menu", command=lambda: self.show_frame(main_menu), width=30)
-      back_to_main_btn.pack(pady=10)
-      
-      # Text sending screen
-      api_key_label = ttk.Label(text_screen, text="API Key:")
-      api_key_label.pack(pady=0)
-      api_key_entry = tk.Text(text_screen, height=1, width=65)
-      api_key_entry.pack(pady=0)
-      api_key_entry.insert(tk.END, key)
-      
-      texts_left_label = ttk.Label(text_screen, text="Texts left:")
-      texts_left_label.place(x=50, y=90)
-      texts_left_entry = tk.Text(text_screen, height=1, width=15)
-      texts_left_entry.place(x=35, y=120)
-      texts_left_entry.insert(tk.END, str(self.texts_remaining))
-      texts_left_entry.config(state="disabled") 
-      
-      
-      
-      text_screen_label = ttk.Label(text_screen, text="Text:")
-      text_screen_label.pack(pady=0)
-      text_entry = tk.Text(text_screen, height=20, width=50)
-      text_entry.pack(pady=0)
-      
-      
-      
-      text_send_btn = ttk.Button(text_screen, text="Send", command=lambda: self.send_text(api_key_entry, text_entry, texts_left_entry, greeting_text_entry, signature_text_entry), width=20)
-      text_send_btn.pack(pady=7)
-      
-      text_ai_btn = ttk.Button(text_screen, text="Use AI", command=lambda: self.open_ai_window(), width=15)
-      text_ai_btn.place(x=620, y=150)
-      
-
-      greeting_text_label = tk.Label(text_screen, text="Greeting:", font=("Arial", 10))
-      greeting_text_label.place(x=20, y=250)
-      
-      greeting_text_entry = tk.Text(text_screen, height=1, width=20)
-      greeting_text_entry.place(x=20, y=280)
-      greeting_text_entry.insert("1.0", "Good afternoon")
-      
-      
-      signature_text_label = tk.Label(text_screen, text="Signature:", font=("Arial", 10))
-      signature_text_label.place(x=20, y=330)
-      
-      signature_text_entry = tk.Text(text_screen, height=1, width=20)
-      signature_text_entry.place(x=20, y=360)
-      signature_text_entry.insert("1.0", "Sincerely")
-      
-
-      get_more_credits_btn = ttk.Button(text_screen, text="Buy More", command=lambda: webbrowser.open("https://textbelt.com/purchase/?generateKey=1"), width=10)
-      get_more_credits_btn.place(x=40, y=160)
-   
-      
-      
-      back_to_main_menu_btn = ttk.Button(text_screen, text="Back to Main Menu", command=lambda: self.show_frame(main_menu), width=30)
-      back_to_main_menu_btn.pack(pady=0)
-      
-
+  
       # CSV Viewing Screen 
       csv_view_title = ttk.Label(csv_view_screen, text="Current CSV", font=("Arial", 24))
       csv_view_title.pack(pady=20)
@@ -410,7 +420,7 @@ class Home:
       self.switch_frame(main_menu) # Make main menu the starting frame
 
 
-      self.root.config(background='white')
+      
       
       self.root.iconphoto(False, self.icon)
       self.root.mainloop()
@@ -421,12 +431,9 @@ key = "553df227ee6b5643502d4fd312f13bc7cd833472vxmQm2Xy3anpwHqi07x33Pric" # Comp
 
 
 
-
-
-
-
 if __name__ == "__main__":
     app = Home()  
     app.gui() 
+
 
 
