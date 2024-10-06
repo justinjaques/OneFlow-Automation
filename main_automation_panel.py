@@ -30,6 +30,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
+from PIL import Image, ImageTk
 
 
 
@@ -52,31 +53,36 @@ class Home:
       self.client_name = "Justin Jaques"
       self.texts_remaining = ""
       self.root = ctk.CTk()
-      self.icon = PhotoImage(file=self.resource_path("OneFlow_Window_Icon.png"))
       self.first_name_reference = "[FirstName]"  
       self.last_name_reference = "[LastName]"
       self.selected_attachment_path = None
+      self.canLoadDataFrame = False
   
       
       
    # Loading the CSV Data, and getting the specific credentials such as Name, Email and Phone   
    def load_data(self):
       df = pd.read_csv(self.current_csv)
-      df['Phone'] = df['Phone'].fillna("").astype(str).str.replace(".0", "", regex=False)
-      self.first_name_list = df['First Name'].dropna().tolist()
-      self.last_name_list = df['Last Name'].dropna().tolist()
-      self.email_list = df['Email'].dropna().tolist()
-      self.text_list = df['Phone'].dropna().tolist()
-      
+      try:
+         df['Phone'] = df['Phone'].fillna("").astype(str).str.replace(".0", "", regex=False)
+         self.first_name_list = df['First Name'].dropna().tolist()
+         self.last_name_list = df['Last Name'].dropna().tolist()
+         self.email_list = df['Email'].dropna().tolist()
+         self.text_list = df['Phone'].dropna().tolist()
+      except Exception as e:
+          messagebox.showwarning("Error", "Failed to upload CSV. Make sure you have a minimum one entry populated First Name, Last Name, Email, and Phone column in your CSV document (case sensitive).")
+         
+
       
   # Opening the window for AI use
    def open_ai_window(self):
      ai_window = ctk.CTkToplevel(self.root)
-     ai_window.title("OneAI - Powered by Gemini")
+     ai_window.title("OneAI - Powered by Google Gemini")
      ai_window.geometry("1000x600")
      ai_window.resizable(False, False)
-     ai_window.iconphoto(False, self.icon)
-     
+     ai_window.lift()
+     ai_window.after(201, lambda :ai_window.iconbitmap("OneFlow_Logo.ico"))
+  
      
      ai_response_box = ctk.CTkTextbox(ai_window, height=400, width=940, wrap=tk.WORD)
      ai_response_box.place(x=20, y=20)
@@ -91,9 +97,11 @@ class Home:
      
      ai_query_box = ctk.CTkTextbox(ai_window, height=1, width=800)
      ai_query_box.place(x=90, y=500)
-     ai_response_box.insert(tk.END, "OneAi: \n\n" + "Hi! I am OneAI, here to assist you with anything you need. Type a prompt such as: 'Draft a text to a potential client' below to get started!" + "\n")
+     ai_response_box.insert(tk.END, "OneAi: \n\n" + "Hi! I am OneAI, here to assist you with anything you need. Type a prompt such as: 'Draft a email to a potential client using HTML formatting, and replace the clients name with [FirstName]' below to get started!" + "\n")
      ai_response_box.configure(state="disabled")
      ai_query_box.bind("<Return>", lambda event: self.handle_query(ai_query_box, ai_response_box))
+     ai_query_submit_btn = ctk.CTkButton(ai_window, text="Submit", command=lambda: self.handle_query(ai_query_box, ai_response_box), width=100, fg_color="#4CAF50")
+     ai_query_submit_btn.place(x=400, y=550)
      
      
    def handle_query(self, ai_query_box, ai_response_box):
@@ -120,11 +128,11 @@ class Home:
    # Handling uploading the CSV 
    def upload_csv(self):
       self.current_csv = filedialog.askopenfilename(filetypes=[("CSV Files", "*.csv")])
-      if self.current_csv:
+      self.load_data()
+      if self.current_csv and self.first_name_list and self.last_name_list and self.text_list and self.email_list:
          frame = pd.read_csv(self.current_csv)
          self.list = frame.dropna().values.flatten().tolist()
          messagebox.showinfo("Success", "CSV file uploaded successfully!")
-         self.load_data()
          person_dict = {
             'First Name': self.first_name_list,
             'Last Name': self.last_name_list,
@@ -134,6 +142,8 @@ class Home:
          
          final_frame = pd.DataFrame(person_dict)
          self.final_dataframe = final_frame
+
+         
          
          
 
@@ -277,6 +287,8 @@ class Home:
       email_window.title("OneFlow Automation - E-mail")
       email_window.geometry("1000x800")
       email_window.resizable(False, False)
+      email_window.lift()
+      email_window.after(201, lambda :email_window.iconbitmap("OneFlow_Logo.ico"))
       
 
       subject_label = ctk.CTkLabel(email_window, text="E-Mail Subject:")
@@ -349,6 +361,9 @@ class Home:
       text_window.title("OneFlow Automation - Text")
       text_window.geometry("800x520")
       text_window.resizable(False, False)
+      text_window.lift()
+      text_window.focus_force()
+      text_window.after(201, lambda :text_window.iconbitmap("OneFlow_Logo.ico")) 
       
       
       api_key_label = ctk.CTkLabel(text_window, text="API Key:")
@@ -418,6 +433,7 @@ class Home:
       self.root.title("OneFlow Automation Home Panel")
       self.root.geometry("800x520")
       self.root.resizable(False, False)
+      self.root.after(201, lambda :self.root.iconbitmap("OneFlow_Logo.ico"))
 
       # Set theme
       style = ttk.Style()
@@ -505,16 +521,13 @@ class Home:
 
 
       
-      
-      self.root.iconphoto(False, self.icon)
+      icon = ImageTk.PhotoImage(Image.open("OneFlow_logo.png"))
+      self.root.iconphoto(False, icon)
       self.root.mainloop()
          
 
 
 key = "553df227ee6b5643502d4fd312f13bc7cd833472vxmQm2Xy3anpwHqi07x33Pric" # Companies will have to use their own API Key.
-
-
-
 
 
 
